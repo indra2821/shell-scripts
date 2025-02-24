@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Set alert thresholds
+CPU_THRESHOLD=80
+DISK_THRESHOLD=90
+LOG_FILE="/var/log/system_health.log"
+
+# Function to log messages
+log_message() {
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" | sudo tee -a "$LOG_FILE"
+}
+
+# Ensure the log file is writable
+sudo touch "$LOG_FILE"
+sudo chmod 666 "$LOG_FILE"
+
+# Check CPU Usage
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
+log_message "CPU Usage: ${CPU_USAGE}%"
+
+if (( $(echo "$CPU_USAGE > $CPU_THRESHOLD" | bc -l) )); then
+    log_message "⚠️ Warning: High CPU usage detected!"
+fi
+
+# Check Memory Usage
+MEMORY_USAGE=$(free -m | awk '/Mem:/ { printf("%.2f"), $3/$2 * 100 }')
+log_message "Memory Usage: ${MEMORY_USAGE}%"
+
+# Check Disk Usage
+DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+log_message "Disk Usage: ${DISK_USAGE}%"
+
+if [[ "$DISK_USAGE" -gt "$DISK_THRESHOLD" ]]; then
+    log_message "⚠️ Warning: Low disk space available!"
+fi
+
+# Check if essential services are running
+SERVICES=("nginx" "mysql" "docker")
+
+for service in "${SERVICES[@]}"; do
+    if sudo systemctl is-active --quiet "$service"; then
+        log_message "✅ $service is running."
+    else
+        log_message "❌ $service is NOT running!"
+    fi
+done
+
+# Check network connectivity
+ping -c 1 google.com &> /dev/null
+if [[ $? -eq 0 ]]; then
+    log_message "✅ Network connectivity: OK"
+else
+    log_message "❌ Network connectivity: FAILED"
+fi
+
+log_message "System Health Check Completed."
+
