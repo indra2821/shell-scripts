@@ -1,0 +1,25 @@
+#!/bin/bash
+
+echo "🔄 Changing to the SSH directory..."
+cd ~
+cd .ssh/
+
+echo "📝 Enter your PUBLIC key (id_rsa.pub) from PuTTYgen and press Ctrl+D when done:"
+cat > id_rsa.pub
+
+echo "🔒 Enter your PRIVATE key (id_rsa) from PuTTYgen and press Ctrl+D when done:"
+cat > id_rsa
+
+# Set correct permissions
+chmod 600 id_rsa
+chmod 644 id_rsa.pub
+
+echo "✅ Keys saved. Adding the private key to SSH agent..."
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa
+
+echo "🔄 Testing SSH connection with GitHub..."
+ssh -T git@github.com
+
+echo "🎉 Setup complete! Your SSH connection to GitHub is now ready."
+
